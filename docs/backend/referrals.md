@@ -1,43 +1,40 @@
 # Referrals: backend
 
-A member refers a friend from their emails. `/design/referrals` is the page on demo data (`src/app/design/referrals/`); the real page will live at `/refer/[token]`. Copy is placeholder (`copy.ts`) until Gaurav signs it off.
+A member refers a friend from an email. The page is `/refer/<token>` (`src/app/refer/[token]/`), built from `src/features/referrals/`; `/design/referrals` shows the same component on demo data. Copy is placeholder (`src/features/referrals/copy.ts`) until Gaurav signs it off. Database: `supabase/migrations/20261111000000_referrals.sql`.
 
 ## Flow
-1. Every member email's footer has a **Refer a friend** button: `/refer/<token>`, where `token` is the member's `people.unsubscribe_token` (the same person token the Unsubscribe link uses; #52's footer adds this link). The token says who is referring; no sign-in. We chose the person token over per-email tokens (closed #47): simpler, and which email someone acted from isn't needed.
-2. The member enters the friend's name and email and picks **Email them for me** or **I'll send it myself**.
-3. Each referral gets its own friend link, `/r/<referral token>`. It goes in our email, or in the message the member copies.
-4. The friend opens it: we log it and send them to the intake form with the referral attached.
-5. The referral is **complete when the friend signs up**. Then, and only then, the referrer gets an automatic thank-you email.
+1. Every member email's footer has a **Refer a friend** link: `/refer/<token>`, where `token` is the member's person token, `people.unsubscribe_token` (the same one the Unsubscribe link uses). No sign-in: the token is the proof. **#52's footer needs to add this link.**
+2. The page calls `referral_page(token)`: the referrer's first name, or no row (shown as "This link doesn't work") when the token isn't a current member's.
+3. The member enters the friend's name and email and picks **Email them for me** or **I'll send it myself**. Server action `referFriend` (`src/features/referrals/actions.ts`) → `refer_friend(token, name, email, send_email)`.
+4. The friend's link is `/intake-form/sdc-members?r=<referral id>`. The intake form stores the referral on `intake_submissions.referral_id` (`submit_intake`'s new `p_referral_id`; an unknown id is ignored).
+5. **Complete when the friend becomes a member.** `membership_started` links the referral whose link they used on the intake form (latest submission with their address), else the earliest open referral of their address, and records `referral_joined`. The automatic emails engine sends the referrer's thank-you from that event (trigger `referral_joins`). Nothing else emails the referrer.
+
+## `refer_friend` results
+| status | When | Page shows |
+|---|---|---|
+| `unknown_link` | Token isn't a current member's | This link doesn't work |
+| `invalid_name` | Empty, over 80 characters, or contains `< > / \ : @` or control characters (no links in an email SDC sends) | Field error |
+| `invalid_email` | Not an address, or over 254 characters | Field error |
+| `own_email` | The referrer's own address | Field error |
+| `limit` | Ten new referrals in the last 24 hours | Form error |
+| `emailed` | New referral, member chose email | "Thanks for inviting {name}" |
+| `message` | Member chose to send it, or a repeat referral (`referred_on` set) | The message with the friend's link |
 
 ## Rules
-- **Already a member:** the referrer sees the normal result (a referral link must never reveal who is a member). Record the referral as `already_member`, send nothing.
-- **Same member, same email again:** reuse the referral and its link. **Never send a second email**: return the message instead, with the date of the first referral (`referredOn`).
-- **One email per referral, ever** (CASL's refer-a-friend exemption, to confirm with SDC): it names the referrer in full, says it's sent because they referred them, and has an unsubscribe link. No reminders.
-- **Never email an address that has unsubscribed** from SDC. The member can still send the message themselves.
-- **Own email:** refused with a field error.
-- **Credit:** the referral whose link the friend signed up through. If they sign up without a link, the earliest pending referral for that email. Two members referring one friend: one credit, by those rules.
-- **Rate limit:** at most N referral emails per referrer per day (N to decide), since the page sends email to any address.
+- **Never reveals anything about the friend.** Already a member, unsubscribed, bounced or suppressed: the same `emailed` answer, and `invite_requested_at` stays empty, so nothing is sent.
+- **At most one email per referral** (CASL's refer-a-friend exemption, to confirm with SDC). A repeat referral of the same address returns the same referral and link and never queues an email.
+- **Ten new referrals per referrer per day.** Repeats don't count. Serialized per referrer, so parallel requests can't pass it.
+- **Credit:** the link they used, else the earliest referral of their address. One referral per person, ever (rejoining doesn't credit twice). Two people joining at once through one forwarded link: the first takes it.
 
-## Needed
-### Database (new migration)
-- `referrals`: add `token uuid unique` (the friend link), `status` (`pending`, `already_member`, `completed`), `emailed_at timestamptz` (null = we never emailed), `completed_at`, `completed_by_submission` (the intake submission that completed it).
-- `refer_friend(p_token, p_full_name, p_email, p_send_email bool)`, where `p_token` is the referrer's person token. Callable without signing in: the token is the proof, so the rate limit and one-email rule matter. Only current members can refer. Validates, applies every rule above, and returns one of:
-  - `{ status: 'emailed', friend_name }`: we will send the one email (queue it, don't send inline)
-  - `{ status: 'message', friend_name, link, referred_on? }`
-  - field errors for a bad name or email, or the referrer's own address
-  - `unknown_link` for a bad token
-- `open_referral(p_token)`: logs the open, returns whether the link is valid. The page then redirects to `/intake-form?r=<token>`.
-- `submit_intake` takes `p_referral_token` and completes the matching referral (else matches by email), then queues the referrer's thank-you email.
+## For the sender (#52)
+- **Referral invites:** send rows of `referrals` with `invite_requested_at` set and `invite_sent_at` empty (index `referrals_invites_due`), then set `invite_sent_at`. Before sending, re-check the friend can still be emailed (they may have joined or unsubscribed since). The email names the referrer in full (`people.full_name` of `referrer_id`), says it's sent because they referred them, links to `/intake-form/sdc-members?r=<referrals.id>`, and has an unsubscribe link. One email; no reminders.
+- **Footer:** add **Refer a friend** → `/refer/<unsubscribe_token>` next to Unsubscribe.
+- **Don't configure a "Member refers someone" (`refers`) email** for SDC: the decision is to email the referrer only when their friend joins.
 
-### Server actions (`src/features/links/`)
-- `referFriend(token, values)` → `ActionState`-style result matching the union in `src/app/design/referrals/data.ts` (`emailed` | `message` | `invalid` | `failed`).
-
-### Emails (need the sender from #52)
-- **Referral email to the friend** (once): names the referrer, links to `/r/<token>`, unsubscribe footer.
-- **Thank-you to the referrer** when the friend signs up.
-- **Refer a friend** button in every member email footer, next to unsubscribe.
+## Tests
+`supabase/tests/`: replays every migration on a local Postgres and checks every rule above (58 checks), see its README. Also checked by hand: 15 parallel requests create exactly 10 referrals; 8 parallel requests for one friend create one referral and one invite; two people joining at once through one link credit one.
 
 ## Open
+- N for the daily limit (10 for now).
 - A way to rotate a member's person token if one leaks (it's in every email and never changes).
-- N for the daily limit.
-- Whether "already a member" referrals show anywhere for staff (member timeline?).
+- Removing a friend's details on request: admins can read referrals but there's no delete function yet.

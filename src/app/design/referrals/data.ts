@@ -1,63 +1,39 @@
 /*
- * Demo data for the referral page. No backend: everything lives in memory. The real contract (functions,
- * tables, rules) is in docs/backend/referrals.md; `referFriend` below mimics what the server will return.
+ * Demo data for the referral page: the same component as /refer/<token>, with this function standing in
+ * for the server action. The real rules live in `refer_friend` (supabase/migrations/20261111000000_referrals.sql).
  *
  * Try these in the email field:
- * - amara@example.org: the referrer's own address (blocked)
- * - sam@example.org: already referred on Nov 3 (we never email anyone twice, so you get the message instead)
+ * - amara@example.org: the referrer's own address (refused)
+ * - sam@example.org: already referred on Nov 3 (never a second email, so you get the message instead)
  * - lee@example.org: already a member. Looks exactly like a new referral, so a referral link can't be
- *   used to find out who is a member. The server records it and sends nothing.
+ *   used to find out who is a member.
+ * - limit@example.org: the daily limit (ten new referrals)
  * - anything else: a new referral
  * Open /design/referrals?link=unknown for a link with a bad or missing token.
  */
+import { copy } from "@/features/referrals/copy";
+import { friendLinkPath, type ReferralResult, type ReferralValues } from "@/features/referrals/types";
 
-export interface Referrer {
-  firstName: string;
-  fullName: string;
-  email: string;
-}
-
-/** The member the email (and so the referral link) was sent to. */
-export const REFERRER: Referrer = { firstName: "Amara", fullName: "Amara Okafor", email: "amara@example.org" };
-
-export type Delivery = "email" | "self";
-
-export interface ReferralInput {
-  name: string;
-  email: string;
-  delivery: Delivery;
-}
-
-export type ReferralResult =
-  /** We sent the friend the one referral email. */
-  | { status: "emailed"; friendName: string }
-  /** The member sends it themselves. `referredOn` is set when this address was already referred. */
-  | { status: "message"; friendName: string; link: string; referredOn?: string }
-  | { status: "invalid"; fieldErrors: { name?: string; email?: string } }
-  | { status: "failed" };
-
-const ALREADY_REFERRED: Record<string, { on: string; link: string }> = {
-  "sam@example.org": { on: "Nov 3", link: "https://sdc.example.org/r/3f9c2a" },
-};
+export const REFERRER = { firstName: "Amara", email: "amara@example.org" };
 
 const EMAIL = /^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/;
+const link = (id: string) => `https://sdc.example.org${friendLinkPath(id)}`;
 
-/** Stands in for the server action. */
-export async function referFriend(input: ReferralInput): Promise<ReferralResult> {
+export async function demoReferFriend(values: ReferralValues): Promise<ReferralResult> {
   await new Promise((resolve) => setTimeout(resolve, 600));
-  const name = input.name.trim();
-  const email = input.email.trim().toLowerCase();
+  const name = values.name.trim();
+  const email = values.email.trim().toLowerCase();
 
   const fieldErrors: { name?: string; email?: string } = {};
-  if (!name) fieldErrors.name = "Enter their name.";
-  if (!EMAIL.test(email)) fieldErrors.email = "Enter an email address like name@example.org.";
-  else if (email === REFERRER.email) fieldErrors.email = "That’s your email address. Enter your friend’s.";
+  if (!name) fieldErrors.name = copy.nameRequired;
+  else if (/[<>/\\:@]/.test(name)) fieldErrors.name = copy.nameInvalid;
+  if (!EMAIL.test(email)) fieldErrors.email = copy.emailInvalid;
+  else if (email === REFERRER.email) fieldErrors.email = copy.ownEmail;
   if (fieldErrors.name || fieldErrors.email) return { status: "invalid", fieldErrors };
+  if (email === "limit@example.org") return { status: "limit" };
 
-  const firstName = name.split(/\s+/)[0];
-  const earlier = ALREADY_REFERRED[email];
-  if (earlier) return { status: "message", friendName: firstName, link: earlier.link, referredOn: earlier.on };
-
-  if (input.delivery === "email") return { status: "emailed", friendName: firstName };
-  return { status: "message", friendName: firstName, link: "https://sdc.example.org/r/8b41de" };
+  const friendName = name.split(/\s+/)[0];
+  if (email === "sam@example.org") return { status: "message", friendName, link: link("3f9c2a00-0000-4000-8000-000000000000"), referredOn: "Nov 3" };
+  if (values.delivery === "email") return { status: "emailed", friendName };
+  return { status: "message", friendName, link: link("8b41de00-0000-4000-8000-000000000000") };
 }
