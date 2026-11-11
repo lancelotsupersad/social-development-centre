@@ -44,8 +44,13 @@ select t.eq('slash-free url in name', (select status from public.refer_friend(:a
 select t.eq('email in name', (select status from public.refer_friend(:amara, 'sam@evil.example', 'sam@example.org', true)), 'invalid_name');
 select t.eq('markup in name', (select status from public.refer_friend(:amara, '<b>Sam</b>', 'sam@example.org', true)), 'invalid_name');
 select t.eq('newline in name', (select status from public.refer_friend(:amara, E'Sam\u0007', 'sam@example.org', true)), 'invalid_name');
+select t.eq('right-to-left override in name', (select status from public.refer_friend(:amara, E'Sam \u202Emoc.live', 'sam@example.org', true)), 'invalid_name');
+select t.eq('zero-width space in name', (select status from public.refer_friend(:amara, E'Sa\u200Bm', 'sam@example.org', true)), 'invalid_name');
 select t.eq('81-char name', (select status from public.refer_friend(:amara, repeat('a', 81), 'sam@example.org', true)), 'invalid_name');
 select t.eq('bad email', (select status from public.refer_friend(:amara, 'Sam', 'sam@example', true)), 'invalid_email');
+select t.eq('two addresses in one', (select status from public.refer_friend(:amara, 'Sam', 'bob@evil.example,x', true)), 'invalid_email');
+select t.eq('quotes in address', (select status from public.refer_friend(:amara, 'Sam', '"bob"@example.org', true)), 'invalid_email');
+select t.eq('odd domain', (select status from public.refer_friend(:amara, 'Sam', 'bob@exa_mple.org', true)), 'invalid_email');
 select t.eq('long email', (select status from public.refer_friend(:amara, 'Sam', repeat('a', 250) || '@x.org', true)), 'invalid_email');
 select t.eq('own email, any case and spacing', (select status from public.refer_friend(:amara, 'Me', '  AMARA@Example.org ', true)), 'own_email');
 
@@ -101,6 +106,10 @@ select t.eq('8th..10th allowed', (select count(*) from generate_series(8, 10) i,
 select t.eq('11th refused', (select status from public.refer_friend(:amara, 'F11', 'f11@example.org', true)), 'limit');
 select t.eq('repeat still works at the limit', (select status from public.refer_friend(:amara, 'Sam', 'sam@example.org', true)), 'message');
 select t.eq('another referrer is unaffected', (select status from public.refer_friend(:bea, 'Sam', 'sam@example.org', true)), 'emailed');
+reset role;
+select t.eq('a friend is emailed once, whoever refers them', (select count(invite_requested_at) from public.referrals where referred_email = 'sam@example.org'), 1::bigint);
+select t.eq('the second referrer still gets their own referral', (select count(*) from public.referrals where referred_email = 'sam@example.org'), 2::bigint);
+set role anon;
 reset role;
 update public.referrals set created_at = created_at - interval '25 hours' where referrer_id = '00000000-0000-0000-0000-00000000000a';
 set role anon;

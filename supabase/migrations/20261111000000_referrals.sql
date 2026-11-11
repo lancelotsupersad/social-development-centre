@@ -12,8 +12,9 @@
 -- Rules (docs/backend/referrals.md):
 -- - The referrer never learns anything about the friend: a friend who is already a member, has
 --   unsubscribed or is suppressed gets the same answer as anyone else, and is simply not emailed.
--- - At most one email per referral (CASL's refer-a-friend exemption), and a repeat referral of the same
---   address never sends one.
+-- - At most one email per friend address, ever, whoever refers them (CASL's refer-a-friend exemption,
+--   and no member can be used to email someone repeatedly). A repeat referral never sends one.
+-- - SDC's email to the friend never includes the name the member typed, so the name can't carry links.
 -- - Ten new referrals per referrer per day, since the page works without signing in.
 
 -- ---------- referrals ----------
@@ -29,15 +30,20 @@ create index referrals_invites_due on public.referrals (invite_requested_at)
   where invite_requested_at is not null and invite_sent_at is null;
 -- The daily limit counts a referrer's recent referrals.
 create index referrals_referrer_created on public.referrals (referrer_id, created_at desc);
+-- Joining looks referrals up by the friend's address alone.
+create index referrals_referred_email on public.referrals (referred_email);
+-- One referral email per address, ever: enforced here, whatever calls in.
+create unique index referrals_one_invite_per_address on public.referrals (referred_email)
+  where invite_requested_at is not null;
 
 -- ---------- the referral page ----------
 
 -- The referrer behind a person token: a current member. Null for an unknown token or a non-member.
 create function public.referrer_by_token(p_token uuid)
-returns table (person_id uuid, first_name text, full_name text, email text)
+returns table (person_id uuid, first_name text, email text)
 language sql stable security definer set search_path = ''
 as $$
-  select p.id, p.first_name, p.full_name, p.email
+  select p.id, p.first_name, p.email
   from public.people p
   join public.memberships m on m.person_id = p.id
   where p.unsubscribe_token = p_token
@@ -77,13 +83,16 @@ begin
     return;
   end if;
 
-  -- A name, not a vehicle for links in an email SDC sends: no URLs, addresses or markup.
-  if v_name = '' or char_length(v_name) > 80 or v_name ~ '[<>/\\:@[:cntrl:]]' then
+  -- A name: no markup, addresses or URLs, and no control or invisible formatting characters (which can
+  -- disguise text, e.g. right-to-left overrides). SDC's email to the friend doesn't use it anyway.
+  if v_name = '' or char_length(v_name) > 80
+     or v_name ~ '[<>/\\:@[:cntrl:]\u00ad\u200b-\u200f\u202a-\u202e\u2060-\u2069\ufeff]' then
     status := 'invalid_name';
     return next;
     return;
   end if;
-  if char_length(v_email) > 254 or v_email !~ '^[^\s@]+@[^\s@]+\.[^\s@]{2,}$' then
+  -- One plain address: no separators or quotes, a domain of letters, digits, dots and hyphens.
+  if char_length(v_email) > 254 or v_email !~ '^[^\s@,;"<>()\[\]\\]+@[a-z0-9-]+(\.[a-z0-9-]+)*\.[a-z]{2,}$' then
     status := 'invalid_email';
     return next;
     return;
@@ -118,8 +127,16 @@ begin
     return;
   end if;
 
-  -- Emailable: not already a member, not unsubscribed or bounced, not on the suppression list.
+  -- Emailable: never emailed by SDC as a referral before (by anyone), not already a member, not
+  -- unsubscribed or bounced, not on the suppression list. Locked per address, so two members inviting
+  -- the same friend at once can't both pass (the unique index is the backstop).
+  if p_send_email then
+    perform pg_advisory_xact_lock(hashtextextended('referral invite ' || v_email, 0));
+  end if;
   reachable := p_send_email
+    and not exists (
+      select 1 from public.referrals r
+      where r.referred_email = v_email and r.invite_requested_at is not null)
     and not exists (
       select 1 from public.people p
       where p.email = v_email

@@ -13,8 +13,8 @@ A member refers a friend from an email. The page is `/refer/<token>` (`src/app/r
 | status | When | Page shows |
 |---|---|---|
 | `unknown_link` | Token isn't a current member's | This link doesn't work |
-| `invalid_name` | Empty, over 80 characters, or contains `< > / \ : @` or control characters (no links in an email SDC sends) | Field error |
-| `invalid_email` | Not an address, or over 254 characters | Field error |
+| `invalid_name` | Empty, over 80 characters, or contains `< > / \ : @`, control characters or invisible formatting characters (e.g. right-to-left overrides) | Field error |
+| `invalid_email` | Not one plain address (no separators or quotes; domain of letters, digits, dots, hyphens), or over 254 characters | Field error |
 | `own_email` | The referrer's own address | Field error |
 | `limit` | Ten new referrals in the last 24 hours | Form error |
 | `emailed` | New referral, member chose email | "Thanks for inviting {name}" |
@@ -22,17 +22,18 @@ A member refers a friend from an email. The page is `/refer/<token>` (`src/app/r
 
 ## Rules
 - **Never reveals anything about the friend.** Already a member, unsubscribed, bounced or suppressed: the same `emailed` answer, and `invite_requested_at` stays empty, so nothing is sent.
-- **At most one email per referral** (CASL's refer-a-friend exemption, to confirm with SDC). A repeat referral of the same address returns the same referral and link and never queues an email.
+- **At most one referral email per friend address, ever, whoever refers them** (CASL's refer-a-friend exemption, to confirm with SDC; and no group of members can bombard one address). Enforced by the unique index `referrals_one_invite_per_address`. A second member referring the same friend still gets their own referral (and credit if the friend joins through their link), just no second email. A repeat referral by the same member returns the same referral and link.
+- **SDC's email to the friend never includes the name the member typed** ("Hi," not "Hi Sam,"), so the name can't carry a link into an email from SDC. The member's own copied message does include it.
 - **Ten new referrals per referrer per day.** Repeats don't count. Serialized per referrer, so parallel requests can't pass it.
 - **Credit:** the link they used, else the earliest referral of their address. One referral per person, ever (rejoining doesn't credit twice). Two people joining at once through one forwarded link: the first takes it.
 
 ## For the sender (#52)
-- **Referral invites:** send rows of `referrals` with `invite_requested_at` set and `invite_sent_at` empty (index `referrals_invites_due`), then set `invite_sent_at`. Before sending, re-check the friend can still be emailed (they may have joined or unsubscribed since). The email names the referrer in full (`people.full_name` of `referrer_id`), says it's sent because they referred them, links to `/intake-form/sdc-members?r=<referrals.id>`, and has an unsubscribe link. One email; no reminders.
+- **Referral invites:** send rows of `referrals` with `invite_requested_at` set and `invite_sent_at` empty (index `referrals_invites_due`), then set `invite_sent_at`. Before sending, re-check the friend can still be emailed (they may have joined or unsubscribed since). The email greets the friend without the typed name, names the referrer in full (`people.full_name` of `referrer_id`), says it's sent because they referred them, links to `/intake-form/sdc-members?r=<referrals.id>`, and has an unsubscribe link. One email; no reminders.
 - **Footer:** add **Refer a friend** → `/refer/<unsubscribe_token>` next to Unsubscribe.
 - **Don't configure a "Member refers someone" (`refers`) email** for SDC: the decision is to email the referrer only when their friend joins.
 
 ## Tests
-`supabase/tests/`: replays every migration on a local Postgres and checks every rule above (58 checks), see its README. Also checked by hand: 15 parallel requests create exactly 10 referrals; 8 parallel requests for one friend create one referral and one invite; two people joining at once through one link credit one.
+`supabase/tests/`: replays every migration on a local Postgres and checks every rule above (65 checks), see its README. Also checked by hand: 15 parallel requests create exactly 10 referrals; 8 parallel requests for one friend create one referral and one invite; 12 members referring one friend at once create 12 referrals and one invite; two people joining at once through one link credit one. An independent review found no security issues; its three email-option findings are fixed.
 
 ## Open
 - N for the daily limit (10 for now).
