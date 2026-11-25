@@ -15,6 +15,12 @@ const Frame = styled.div`
   @media (max-width: 767px) {
     grid-template-columns: minmax(0, 1fr);
   }
+
+  /* Public, signed-out screens (e.g. the join page) have no sidebar: they mark their root with
+     data-design-public and get the full width. */
+  &:has([data-design-public]) {
+    grid-template-columns: minmax(0, 1fr);
+  }
 `;
 
 const NavPlaceholder = styled.div`
@@ -22,6 +28,10 @@ const NavPlaceholder = styled.div`
   border-right: 1px solid var(--color-border);
 
   @media (max-width: 767px) {
+    display: none;
+  }
+
+  ${Frame}:has([data-design-public]) & {
     display: none;
   }
 `;
