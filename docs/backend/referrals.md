@@ -36,9 +36,10 @@ A member refers a friend from an email. The page is `/refer/<token>` (`src/app/r
 From the PM's notes. Design only, on demo data; nothing below is connected yet.
 
 ### Member page layout (`/design/referrals`)
-One photo banner, centred on the page: "Share SDC referral" on the left; under it the member's invite
-link (shown, not editable) with **Copy link**, then "or", then **Recipient's first name** and **Send to
-email address** with **Share invite**. After sending, the same "Thanks for inviting…" and repeat-referral states as `ReferPage`.
+One banner, centred on the page (the join page's doodle pattern under the green gradient): "Share SDC
+referral". Then two steps: **Recipient's full name** and **Recipient's email address** with **Next**; then
+who it's for (with **Change**), **Send invite**, "or", and that friend's invite link with **Copy link**, and
+**Send another referral** once something has gone out. After sending, the same repeat-referral states as `ReferPage`.
 `?link=unknown` shows the broken-link state. To ship it, port the layout into
 `src/features/referrals/ReferPage.tsx`.
 
@@ -49,8 +50,10 @@ The design changes two things the backend needs to know about:
 - **I'll send it myself** shows the invite link with **Copy link** (no separate "message" step). Copy link
   waits for the name and email, calls `refer_friend` with `delivery = 'self'` so the referral is tracked
   against that email, then copies that friend's own link.
-- **The form asks for the friend's first name and email address**, the same two things `refer_friend`
-  takes today (`p_name`, `p_email`), so nothing changes there.
+- **The form asks for the friend's full name** (not just their first name) and email address. `refer_friend`
+  takes the same two things today (`p_name`, `p_email`), but anything that greets the friend by name (SDC's
+  invite email, the join page) should use only the first word, e.g. "Hi Priya", not "Hi Priya Sharma". The
+  name is capitalized as it's typed (the first letter of each word).
 
 ### Where a referral link goes: the join page
 A referral link opens the **join page** (`/design/membership` in the `justin/membership-design` branch),

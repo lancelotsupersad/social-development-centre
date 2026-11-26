@@ -105,14 +105,15 @@ function HexField({ size, gap, mask }: { size: number; gap: number; mask: string
  */
 const DEFAULTS = {
   split: { top: 36.47, fadeStart: 17.726, fadeEnd: 95.963 },
-  banner: { top: 0, fadeStart: 5, fadeEnd: 80 },
+  // The join page's tuned gradient (src/app/design/membership/PhotoShade.tsx), so the two pages match.
+  banner: { top: 0, fadeStart: 7.5, fadeEnd: 100 },
 };
 
 export function FigmaShade({ layout = "split" }: { layout?: "split" | "banner" }) {
   const d = DEFAULTS[layout];
   const p = useDialKit(layout === "banner" ? "Photo banner" : "Photo panel", {
     gradient: {
-      angle: [188.64, 150, 230, 0.5],
+      angle: [layout === "banner" ? 188.5 : 188.64, 150, 230, 0.5],
       top: [d.top, 0, 80, 0.5],
       fadeStart: [d.fadeStart, 0, 90, 0.5],
       fadeEnd: [d.fadeEnd, 10, 100, 0.5],

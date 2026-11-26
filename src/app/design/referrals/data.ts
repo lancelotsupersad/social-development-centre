@@ -33,6 +33,15 @@ const EMAIL = /^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/;
 const link = (id: string) => `https://sdc.example.org/join?via=referral&ref=${id.slice(0, 8)}`;
 
 /**
+ * A name with the first letter of each word in capitals: "mary-jane" becomes "Mary-Jane". Only a letter at
+ * the start of the name or right after a space or hyphen changes; the rest stays as typed, so "McKenzie"
+ * and "DeShawn" keep their capitals. Same length as what was typed, so the cursor stays put.
+ */
+export function capitalizeName(name: string) {
+  return name.replace(/(^|[\s-])(\p{Ll})/gu, (_, before: string, letter: string) => before + letter.toUpperCase());
+}
+
+/**
  * One address per person, for "already invited": lower case, no spaces, no "+tag"
  * (sam+sdc@ is sam@), and no dots in Gmail names (s.am@gmail.com is sam@gmail.com). The address typed is
  * still the one emailed.

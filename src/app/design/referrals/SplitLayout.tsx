@@ -8,6 +8,7 @@ import "dialkit/styles.css";
 import photo from "./referral-photo.jpg";
 import skyline from "./waterloo-skyline.png";
 import { Clouds } from "./Clouds";
+import { DoodlePattern } from "./DoodlePattern";
 import { FigmaShade } from "./FigmaShade";
 
 /*
@@ -116,10 +117,12 @@ const Visual = styled.div`
   background: var(--sdc-950);
   color: var(--taupe-50);
 
-  /* Figma version: 8px corners and 32px side padding (Figma: 31px); the gradient is FigmaShade. */
+  /* Figma version: 8px corners and 32px side padding (Figma: 31px); the gradient is FigmaShade. SDC green
+     under the doodle pattern, as on the join page. */
   &[data-variant="figma"] {
     border-radius: var(--radius-lg);
     padding-inline: var(--space-6);
+    background: var(--sdc-700);
   }
 
   /* Saved version: the whole photo under a green overlay, darkest at the bottom. */
@@ -278,6 +281,17 @@ const VisualIcon = styled.span`
   background: var(--color-success-subtle);
   border: 1px solid var(--color-success-border);
   color: var(--color-success);
+
+  /* Just the glyph, no circle (the thank-you heart after an email invite). */
+  &[data-plain] {
+    align-self: flex-start;
+    justify-content: flex-start;
+    width: auto;
+    height: auto;
+    border: 0;
+    border-radius: 0;
+    background: none;
+  }
 `;
 
 /* A little smaller than the display size, and as wide as the panel. */
@@ -472,6 +486,7 @@ export function SplitLayout({
   title,
   lede,
   icon,
+  plainIcon = false,
   headingRef,
   variant = "figma",
   layout = "banner",
@@ -484,6 +499,8 @@ export function SplitLayout({
   lede: ReactNode;
   /** Shown above the heading in a light circle, e.g. a check mark once something's done. */
   icon?: ReactNode;
+  /** The icon without its circle. */
+  plainIcon?: boolean;
   /** Pass to move focus to the heading, e.g. after a form is sent. */
   headingRef?: RefObject<HTMLHeadingElement | null>;
   variant?: PanelVariant;
@@ -518,15 +535,25 @@ export function SplitLayout({
       {(variant === "figma" || layout === "banner") && <DialRoot position="bottom-right" />}
       <Card style={layout === "banner" ? { boxShadow: cardShadow } : undefined}>
       <Visual ref={visualRef} data-variant={variant} data-aside={aside ? "" : undefined}>
-        <Photo src={photo} alt="" fill sizes={layout === "banner" ? "600px" : "(max-width: 899px) 100vw, 50vw"} priority />
+        {/* The Figma version uses the join page's doodle pattern instead of a photo, so the two pages match.
+            The older versions (?panel=hex, ?panel=overlay) keep the photo. */}
+        {variant === "figma" ? (
+          <DoodlePattern />
+        ) : (
+          <Photo src={photo} alt="" fill sizes={layout === "banner" ? "600px" : "(max-width: 899px) 100vw, 50vw"} priority />
+        )}
         {variant === "hex" && box && <HexShade box={box} />}
         {variant === "figma" && <FigmaShade layout={layout} />}
         <TextBlock ref={textRef}>
-          {icon && <VisualIcon aria-hidden="true">{icon}</VisualIcon>}
+          {icon && (
+            <VisualIcon aria-hidden="true" data-plain={plainIcon ? "" : undefined}>
+              {icon}
+            </VisualIcon>
+          )}
           <VisualTitle ref={headingRef} tabIndex={headingRef ? -1 : undefined}>
             {title}
           </VisualTitle>
-          <VisualLede>{lede}</VisualLede>
+          {lede && <VisualLede>{lede}</VisualLede>}
         </TextBlock>
         {aside && <Aside>{aside}</Aside>}
       </Visual>

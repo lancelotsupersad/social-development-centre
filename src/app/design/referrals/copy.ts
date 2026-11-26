@@ -17,15 +17,18 @@ export const copy = {
   description: "We'll send them one short note from SDC saying you thought they'd like to get involved.",
 
   formTitle: "Who are you inviting?",
-  nameLabel: "Recipient's first name",
+  nameLabel: "Recipient's full name",
   emailLabel: "Recipient's email address",
-  nameRequired: "Enter the recipient's first name.",
+  nameRequired: "Enter the recipient's full name.",
 
   noteLabel: "Referral message",
   noteReset: "Reset to original",
-  linkLabel: "Their invite link",
+  linkLabel: "Share invite link",
+  // Step 2: the email the invite goes to, beside Send email invite.
+  emailInviteLabel: "Email invite",
   linkPlaceholder: "Enter their email to get their link",
   /** Under their link: it credits one join (the first). */
+  // The banner's line under "Share SDC referral" (it used to be the hint under the invite link).
   linkUnique: "Only the first person to join with this link counts as your referral.",
   /** The credit window: a link keeps working, but only counts as a referral if they join within 30 days. */
   creditWindow: "If they join within 30 days, it counts as your referral.",
@@ -47,7 +50,7 @@ export const copy = {
   deliveryLabel: "How should we invite them?",
   deliveryEmail: "Email them for me",
   deliverySelf: "I'll send it myself",
-  submitEmail: "Send invite",
+  submitEmail: "Send email invite",
   sending: "Sending…",
   gettingLink: "Getting link…",
   share: "Share",
@@ -55,8 +58,8 @@ export const copy = {
   shareTitle: "Join me at SDC",
   shareText: "I've been getting involved with the Social Development Centre in Waterloo Region. Join me here:",
   // Tooltip on Send invite and Copy link while they're unavailable: what to fill in first.
-  needBoth: "Fill in their first name and email address first.",
-  needName: "Fill in their first name first.",
+  needBoth: "Fill in their full name and email address first.",
+  needName: "Fill in their full name first.",
   needEmail: "Fill in their email address first.",
   friendLinkLabel: (friend: string) => `${friend}'s invite link`,
   didYouMean: "Did you mean",
@@ -64,10 +67,6 @@ export const copy = {
 
   // The share panel beside the message: copy the link to share it yourself, or SDC emails the message.
   sendTitle: "Share SDC referral",
-  // The banner's line under "Share SDC referral", per step. Step 1 can't share anything yet, so it says
-  // what to fill in; step 2 names the two ways to invite them.
-  whoDescription: "Please specify the recipient's name and email.",
-  howDescription: "Please choose how you want to share your referral.",
   or: "or",
   shareInvite: "Share invite",
   cancel: "Cancel",
@@ -83,11 +82,14 @@ export const copy = {
   // Must stay true whether or not an email goes out, so "we'll let you know if they join" is left out
   // until the "Member joins via referral" email is confirmed as set up.
   sentNote: (email: string) => `Invitation sent to ${email}`,
+  // After Send invite: the form switches to this (wording from Gaurav's page, PR #90).
+  thanksTitle: (friend: string) => `Thank you! We've emailed ${friend} an invite.`,
+  again: "Invite someone else",
+  // Under the link once it's copied or shared (wording from Gaurav's page, PR #90).
+  linkThanks: (friend: string) => `Thanks for sharing SDC with ${friend}.`,
 
   alreadyInvited: (friend: string, on: string) =>
     `You invited ${friend} on ${on}, so we won't email them again. Send them their link yourself.`,
-
-  again: "Invite someone else",
 
   unknownDescription: 'This link might be incomplete. Open "Invite a friend" from your latest SDC email.',
   unknownHelp: "Still stuck? Email sdcwr@waterlooregion.org and we'll help.",
