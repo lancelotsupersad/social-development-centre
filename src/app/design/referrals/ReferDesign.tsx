@@ -404,11 +404,15 @@ const Suggest = styled.span`
   }
 `;
 
-/** Whether this browser has a system share sheet (most phones). False on the server and most desktops. */
+/**
+ * Phones and tablets with a system share sheet: Share takes Copy link's place there. Desktop browsers get
+ * Copy link even when they have a share sheet (Safari on Mac, Chrome on Windows), so it's checked against a
+ * touch screen as the main pointer too. False on the server.
+ */
 function useCanShare() {
   return useSyncExternalStore(
     () => () => {},
-    () => typeof navigator.share === "function",
+    () => typeof navigator.share === "function" && window.matchMedia("(pointer: coarse)").matches,
     () => false,
   );
 }
@@ -677,13 +681,26 @@ function SharePanel({
             )}
             {/* Waits for the name and email, so the referral is tracked against that address; until then a
                 tooltip says what's missing. (Once their link exists it can always be copied again.) */}
+            {/* Phones get Share (the system share sheet) in its place; computers get Copy link. */}
             {!forFriend && missing ? (
               <DisabledReason reason={missing}>
                 <Button data-same-width="" type="button" $variant="outline">
-                  {copy.copyLink}
-                  <Icon icon={Copy} />
+                  {canShare ? copy.share : copy.copyLink}
+                  <Icon icon={canShare ? Share2 : Copy} />
                 </Button>
               </DisabledReason>
+            ) : canShare ? (
+              <Button
+                data-same-width=""
+                type="button"
+                $variant="outline"
+                disabled={!forFriend && pending}
+                aria-busy={pending || undefined}
+                onClick={shareTheirLink}
+              >
+                {pending && running === "link" ? copy.gettingLink : copy.share}
+                {pending && running === "link" ? <Spinner /> : <Icon icon={Share2} />}
+              </Button>
             ) : (
               <CopyButton
                 data-same-width=""
@@ -696,13 +713,6 @@ function SharePanel({
                 {pending && running === "link" ? copy.gettingLink : copied ? copy.copiedShort : copy.copyLink}
                 {pending && running === "link" ? <Spinner /> : <Icon icon={copied ? Check : Copy} />}
               </CopyButton>
-            )}
-            {/* Phones (where the browser can share): Share opens the system share sheet. */}
-            {canShare && !(!forFriend && missing) && (
-              <Button type="button" $variant="outline" disabled={pending} onClick={shareTheirLink}>
-                {copy.share}
-                <Icon icon={Share2} />
-              </Button>
             )}
           </LinkRow>
         )}
