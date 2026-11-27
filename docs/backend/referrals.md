@@ -124,9 +124,35 @@ a cap, one member could make many referrals (e.g. a pasted list); if that's a wo
 above some number is gentler than a hard stop.
 
 ### Email footer (`/design/referrals/footer`)
-The **Refer a friend** line sits above the legal footer (why they get the email, SDC's address, Unsubscribe),
-so it reads as an invitation, not small print. Three copy options for the PM; the recommendation is
-"Know someone who'd care about this? **Refer a friend**", which matches the page title.
+Matches #99 (from #95): **Refer a friend** goes in the one footer saved in Settings, right after
+Unsubscribe in its last line, in the same small grey text. Admins can change the link's words but not remove
+it, and only current members get it. The page shows three wordings for the PM ("Refer a friend", #99's
+default; "Invite a friend"; "Share SDC with a friend"). No backend change beyond #99.
+
+### Invite email (`/design/referrals/email`)
+The email someone gets when they've been referred: sent once, when a member enters their name and email and
+picks **Send invite** (`refer_friend` with email delivery, which sets `invite_requested_at`). Never sent for
+**Copy link**, a repeat referral, or an address SDC can't email (already a member, unsubscribed, or already
+invited by anyone). Shown in their inbox and opened. Copy is a draft for the PM.
+It uses the same layout as every SDC email (`renderDelivery` and the Settings footer, `footerHtml`): plain
+paragraphs, the link as text (no button), a thin line, then the footer. What the sender needs, on top of
+"For the sender" above:
+
+- **Subject** "{referrer full name} invited you to join SDC", and a **preheader** (the inbox's first line):
+  "{referrer first name} thought you'd be a great fit, and we'd love to meet you".
+- **Greeting** is open: "Hi {first word of the typed name}," (Nov design notes) or "Hi there," (the rule
+  above that keeps the typed name out of SDC's emails). The page has a toggle for the PM.
+- **The link** "join SDC here" goes to the friend's join link (`/join?via=referral&ref=<code>`, see "Where a
+  referral link goes").
+- **Footer:** the Settings footer, with two differences because the friend isn't a member: no Refer a friend
+  link (already true: `can_refer` is false), and a different reason line. The Settings footer says "You're
+  getting this because you're an SDC member."; the invite needs "You're getting this because {referrer first
+  name} invited you, and it's the only email we'll send unless you join." So the footer needs a way to swap
+  the reason line per email type (or a second, invite-only reason line in Settings).
+- **Unsubscribe from emails:** the friend isn't in `people`, so the link can't use a person token. It needs
+  its own token per referral (or per friend address) that adds the address to a do-not-email list the sender
+  and `refer_friend` both check.
+- **Reply-to** is the same as automatic emails (`REPLY_TO`).
 
 ### Admin: referring for a member (`/design/members`)
 On a member's profile in the Member Directory, for members who aren't comfortable with the email link.

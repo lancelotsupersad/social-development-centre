@@ -3,27 +3,21 @@
 import * as React from "react";
 import { styled } from "next-yak";
 import { ToggleGroup, ToggleGroupItem } from "@/components/ui/ToggleGroup";
+import { EMAIL_FOOTER } from "@/features/automatic-emails/footer";
 
 /*
- * The "Invite a friend" line in the footer of every SDC email (PM notes, Nov 2026; backend: PR #65,
- * "Footer: add Refer a friend → /refer/<token> next to Unsubscribe"). Shown inside a placeholder email
- * so the copy is judged where members will read it. The options are for the PM to pick from; the
- * design-review bar is not part of the email.
+ * The refer link in the footer of every SDC email to a member, as #99 builds it (from #95): one footer for
+ * all of SDC, saved in Settings (src/features/email-footer/doc.ts), with "Refer a friend" right after
+ * Unsubscribe. Admins can change the link's words (up to 40 characters) but not remove it. Shown in a
+ * placeholder email laid out like every SDC email (renderDelivery): the message, a thin line, then the small
+ * grey footer. The wording options are for the PM; the design-review bar is not part of the email.
  */
 
-interface FooterOption {
-  id: string;
-  label: string;
-  lead: string;
-  link: string;
-  tail?: string;
-}
-
-/** Draft copy for the PM. "Invite a friend" matches the page title (../copy.ts). */
-const OPTIONS: FooterOption[] = [
-  { id: "care", label: "A · Know someone", lead: "Know someone who'd care about this?", link: "Invite a friend" },
-  { id: "invite", label: "B · Invite", lead: "", link: "Invite a friend", tail: " to join SDC" },
-  { id: "share", label: "C · Enjoying these", lead: "Enjoying these updates?", link: "Share SDC with a friend" },
+/** Words admins might give the refer link. The first is #99's default. */
+const OPTIONS = [
+  { id: "refer", label: "Refer a friend" },
+  { id: "invite", label: "Invite a friend" },
+  { id: "share", label: "Share SDC with a friend" },
 ];
 
 const Page = styled.main`
@@ -68,29 +62,22 @@ const Review = styled.div`
   }
 `;
 
-/* A placeholder email, roughly the width of an email client's reading pane. */
+/* The email app's reading pane, roughly as wide as an email. */
 const Email = styled.article`
+  container-type: inline-size;
   width: 100%;
   max-width: 600px;
   margin: 0 auto;
   border: 1px solid var(--color-border);
   border-radius: var(--radius-lg);
   background: var(--color-surface-raised);
-  overflow: hidden;
 `;
 
-const EmailHead = styled.div`
-  padding: var(--space-4) var(--space-6);
-  background: var(--sdc-800);
-  color: var(--taupe-50);
-  font-size: var(--text-sm);
-  font-weight: var(--weight-medium);
-`;
-
-const EmailBody = styled.div`
+/* The message, laid out as the sender sends it: plain paragraphs. */
+const Message = styled.div`
   display: flex;
   flex-direction: column;
-  gap: var(--space-4);
+  gap: var(--space-3);
   padding: var(--space-6);
   font-size: var(--text-md);
   line-height: var(--leading-body);
@@ -99,10 +86,9 @@ const EmailBody = styled.div`
   & p {
     margin: 0;
   }
-  & h2 {
-    margin: 0;
-    font-size: var(--text-lg);
-    font-weight: var(--weight-medium);
+
+  @container (max-width: 599px) {
+    padding: var(--space-5) var(--space-4);
   }
 `;
 
@@ -112,34 +98,19 @@ const Placeholder = styled.p`
   }
 `;
 
-/* The footer: refer line on top, then why they get this email, the sender's address and Unsubscribe. */
-const EmailFooter = styled.footer`
+/* The thin line and small grey footer every SDC email ends with (footerHtml). */
+const Footer = styled.footer`
   display: flex;
   flex-direction: column;
-  gap: var(--space-3);
-  padding: var(--space-5) var(--space-6);
+  margin-top: var(--space-3);
+  padding-top: var(--space-3);
   border-top: 1px solid var(--color-border);
-  background: var(--color-surface);
-  font-size: var(--text-sm);
-  line-height: var(--leading-ui);
+  font-size: var(--text-xs);
+  line-height: var(--leading-body);
   color: var(--color-text-muted);
-  text-align: center;
 
-  & p {
-    margin: 0;
-  }
-  & a {
-    color: var(--color-mention);
-    font-weight: var(--weight-medium);
-    text-decoration: underline;
-    text-underline-offset: 2px;
-  }
-`;
-
-const ReferLine = styled.p`
-  && {
-    font-size: var(--text-md);
-    color: var(--color-text);
+  && a {
+    color: var(--color-text-muted);
   }
 `;
 
@@ -161,12 +132,12 @@ export function FooterDesign() {
   return (
     <Page>
       <header>
-        <Title>Email footer: Invite a friend</Title>
-        <Lede>Every email SDC sends a member ends with a way to invite a friend, next to Unsubscribe.</Lede>
+        <Title>Email footer: Refer a friend</Title>
+        <Lede>Every email SDC sends a member ends with a link to invite a friend, right after Unsubscribe.</Lede>
       </header>
 
       <Review>
-        <span id="footer-option">Design review: copy option</span>
+        <span id="footer-option">Design review: link words</span>
         <ToggleGroup
           type="single"
           value={optionId}
@@ -182,38 +153,39 @@ export function FooterDesign() {
       </Review>
 
       <Email aria-label="Example SDC email">
-        <EmailHead>Social Development Centre Waterloo Region</EmailHead>
-        <EmailBody>
-          <h2>Thanks for joining, Maya</h2>
+        <Message>
+          <p>Hi Maya,</p>
           <Placeholder>
             Placeholder email body. This is where an automatic email&rsquo;s message goes, for example a thank-you
             after joining or a check-in a month later.
           </Placeholder>
           <p>The team at SDC</p>
-        </EmailBody>
-        <EmailFooter>
-          <ReferLine>
-            {option.lead && `${option.lead} `}
-            <a href="/design/referrals">{option.link}</a>
-            {option.tail}
-          </ReferLine>
-          <p>
-            You&rsquo;re getting this email because you&rsquo;re a member of the Social Development Centre Waterloo
-            Region, 23 Water St N, Kitchener ON.
-          </p>
-          <p>
-            <a href="/design/referrals">Unsubscribe</a>
-          </p>
-        </EmailFooter>
+          <Footer>
+            <p>{EMAIL_FOOTER.organization}</p>
+            <p>
+              {EMAIL_FOOTER.address} &middot; {EMAIL_FOOTER.contact}
+            </p>
+            <p>
+              {EMAIL_FOOTER.reason} <a href="#unsubscribe">Unsubscribe from emails</a> &middot;{" "}
+              <a href="/design/referrals">{option.label}</a>
+            </p>
+          </Footer>
+        </Message>
       </Email>
 
       <Notes>
-        <li>The invite line sits above the legal footer so it reads as an invitation, not small print.</li>
         <li>
-          The link opens the member&rsquo;s own Invite a friend page (<code>/refer/&lt;token&gt;</code>). A forwarded
+          The link sits in the footer&rsquo;s last line, after Unsubscribe, the way #99 adds it to the one footer in
+          Settings. Cancel membership joins that line once it has a page to go to.
+        </li>
+        <li>
+          Admins choose the link&rsquo;s words in Settings (up to 40 characters, no web or email addresses) but
+          can&rsquo;t remove it. Only current members get it; the invite email to a friend doesn&rsquo;t have it.
+        </li>
+        <li>
+          The link opens the member&rsquo;s own refer page (<code>/refer/&lt;token&gt;</code>). A forwarded
           email&rsquo;s link still belongs to the original member.
         </li>
-        <li>Option A is the recommendation: it explains why to invite someone, and its link matches the page title.</li>
       </Notes>
     </Page>
   );

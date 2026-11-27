@@ -9,7 +9,8 @@ export const metadata: Metadata = { title: copy.pageTitle };
  * whose token is bad or missing. The photo is a banner above the form; `?layout=split` puts it beside the
  * form instead. It defaults to the Figma design; `?panel=hex` and `?panel=overlay` show the two earlier
  * versions. See data.ts for emails that trigger each result.
- * Related screens: /design/referrals/footer (the email footer) and /design/members (the admin side).
+ * Related screens: /design/referrals/footer (the refer link in the email footer), /design/referrals/email (the invite email
+ * the friend gets) and /design/members (the admin side).
  */
 export default async function ReferralsDesign({ searchParams }: {
   searchParams: Promise<{ link?: string; panel?: string; layout?: string }>;
