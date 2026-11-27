@@ -27,9 +27,6 @@ export const copy = {
   // Step 2: the email the invite goes to, beside Send email invite.
   emailInviteLabel: "Email invite",
   linkPlaceholder: "Enter their email to get their link",
-  /** Under their link: it credits one join (the first). */
-  // The banner's line under "Share SDC referral" (it used to be the hint under the invite link).
-  linkUnique: "Only the first person to join with this link counts as your referral.",
   /** The credit window: a link keeps working, but only counts as a referral if they join within 30 days. */
   creditWindow: "If they join within 30 days, it counts as your referral.",
   sendAnother: "Send another referral",

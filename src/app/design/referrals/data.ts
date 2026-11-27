@@ -130,3 +130,13 @@ export async function demoReferFriend(values: ReferralValues): Promise<ReferralR
   // Each person gets their own link; the same person always gets the same one.
   return { status: "message", friendName, link: link(codeFor(email)) };
 }
+
+/** The rest of the address to offer after what's typed ("alex@g" → "mail.com"), or null. */
+export function completeEmail(value: string): string | null {
+  const at = value.indexOf("@");
+  if (at < 1 || value.indexOf("@", at + 1) !== -1) return null;
+  const typed = value.slice(at + 1).toLowerCase();
+  if (!typed) return null;
+  const match = DOMAINS.find((domain) => domain.startsWith(typed) && domain !== typed);
+  return match ? match.slice(typed.length) : null;
+}

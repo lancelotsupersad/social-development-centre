@@ -98,13 +98,22 @@ the backend needs for each:
 | Copy fails after the referral is recorded (Safari blocks a copy after a network wait) | The link stays, selected, with "copy it yourself"; Copy link copies again without recording twice | Recording with `delivery = 'self'` is idempotent for the same member and email (returns the same link) |
 | Typo in the email (`priya@gmial.com`) | "Did you mean priya@gmail.com?" under the field, before sending | None; the suggestion is client-side only |
 | Friend joins with a different email | Admin profile: the referral turns Joined, with "Joined with another email: …" | Credit follows the link's `ref` code, not the email. Store the joining address on the referral (`joined_email`) |
-| Link passed on to someone else | Admin profile: "Link passed on: Rosa Moreno (…) joined with it" | Same as above: the code credits the member; store who joined (`joined_person_id`). One join per code |
+| Link passed on to someone else | Admin profile: "Link passed on: Rosa Moreno (…) joined with it" | Same as above: the code credits the member; store who joined (`joined_person_id`). Any number of joins per code (see "A link isn't limited to one person") |
 | Two members invite the same person | Each member sees a normal "Invitation sent" (nothing about the other) | Only the first is emailed. Credit goes to the link they join through; if they join with no link, to the earliest invite for that email |
 | Friend joins without any link | Nothing on the member page | At join, match the new member's normalised email to an open referral and credit it |
 | No limit on how many people a member invites | Never a "try again tomorrow" message | Drop the daily limit from `refer_friend` (see "No daily limit" below) |
 | Same person, different spelling (`Sam+sdc@`, `SAM@`, `s.am@gmail.com`) | Treated as already invited | Compare normalised emails: lower case, trimmed, no `+tag`, no dots in Gmail names. Email the address as typed |
 | Changing the choice after an error | The old error or result clears; what's typed stays | None |
 | Already a member, unsubscribed, or invited by someone else | A normal "Invitation sent", so the form reveals nothing | Never email an unsubscribed person (CASL); still record the referral so a later join can be credited |
+
+### A link isn't limited to one person (Justin, Nov 26)
+Many people can join with the same link, and each one counts as the member's referral. The page no longer
+says "Only the first person to join with this link counts as your referral." For the backend: change the
+credit rule above ("Two people joining at once through one forwarded link: the first takes it", and one
+`joined_person_id` per referral) so a code credits every person who joins with it, e.g. a join row per
+person (`referral_joins`: referral id, person id, joined email, joined at) instead of one joined person on
+the referral. "One referral per person, ever" still holds from the friend's side: each new member is
+credited to one referral only.
 
 ### No daily limit
 The design removes the limit on how many people a member can invite (Justin, Nov 23): no "ten a day", and

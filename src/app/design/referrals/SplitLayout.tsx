@@ -308,7 +308,7 @@ const VisualTitle = styled.h1`
   }
 
   [data-layout="banner"] & {
-    font-size: calc(var(--text-xl) * 0.8);
+    font-size: var(--text-xl);
     line-height: var(--leading-heading);
   }
 `;

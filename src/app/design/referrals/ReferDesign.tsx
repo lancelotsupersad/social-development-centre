@@ -11,7 +11,8 @@ import { Input } from "@/components/ui/Input";
 import { AppToastProvider } from "@/components/ui/Toast";
 import { copy } from "./copy";
 import type { Delivery, ReferralResult, ReferralValues } from "@/features/referrals/types";
-import { capitalizeName, checkRecipient, demoReferFriend, previewLinkFor, suggestEmail } from "./data";
+import { EmailInput } from "./EmailInput";
+import { capitalizeName, checkRecipient, completeEmail, demoReferFriend, previewLinkFor, suggestEmail } from "./data";
 import { SplitLayout, type PanelLayout, type PanelVariant } from "./SplitLayout";
 
 /*
@@ -193,7 +194,7 @@ function Refer({
       variant={panel}
       layout={layout}
       title={emailed ? copy.thanksTitle(firstName(emailed.friendName)) : copy.sendTitle}
-      lede={emailed ? null : copy.linkUnique}
+      lede={null}
       icon={
         emailed ? (
           <BannerHeart>
@@ -556,7 +557,8 @@ function SharePanel({
   /** The friend's first name, for the thank-yous ("Priya", from "Priya Sharma"). */
   const friend = firstName(link?.friendName ?? (result?.status === "emailed" ? result.friendName : name));
   // A likely typo ("gmial.com"), offered before sending so the referral isn't tracked to a dead address.
-  const suggestion = fieldErrors.email ? null : suggestEmail(email);
+  // Not while the address is still being finished ("priya@g" offers gmail.com instead).
+  const suggestion = fieldErrors.email || completeEmail(email) ? null : suggestEmail(email);
 
   function clearFields() {
     if (nameRef.current) nameRef.current.value = "";
@@ -803,17 +805,16 @@ function SharePanel({
           }
         >
           {(p) => (
-            <Input
+            <EmailInput
               {...p}
               ref={emailRef}
-              type="email"
               name="email"
               required
               autoComplete="off"
               maxLength={254}
-              defaultValue={email}
-              onChange={(e) => {
-                setEmail(e.target.value);
+              value={email}
+              onValue={(value) => {
+                setEmail(value);
                 edited();
               }}
             />
