@@ -6,7 +6,8 @@ import { styled } from "next-yak";
 /*
  * The membership card on a lanyard, hanging from the top of the window. Grab the card and pull it anywhere:
  * the strap stretches after it from the top edge and the card tilts to hang off the strap. Let go and it
- * springs back to where it hangs, with a little bounce.
+ * springs back to where it hangs, with a little bounce. On load it drops in and swings to a stop the same
+ * way, a hint that it can be grabbed.
  *
  * The card's offset and the strap are written straight to the DOM each frame (no React state), so it
  * follows the pointer smoothly. The animation only runs while it's held or settling. People who ask for
@@ -20,6 +21,10 @@ const STIFFNESS = 90;
 const DAMPING = 9;
 /** How far the card can be pulled from where it hangs, in px. */
 const REACH = 320;
+/** The drop on load: how far above and to the side of where it hangs it starts (px), and the wait (ms). */
+const DROP_LIFT = 150;
+const DROP_X = 70;
+const DROP_DELAY = 400;
 
 const Rig = styled.div`
   position: relative;
@@ -110,8 +115,6 @@ export function Lanyard({ children }: { children: React.ReactNode }) {
     }
   }, []);
 
-  React.useLayoutEffect(draw, [draw]);
-
   React.useEffect(() => {
     const s = state.current;
     return () => cancelAnimationFrame(s.frame);
@@ -140,6 +143,22 @@ export function Lanyard({ children }: { children: React.ReactNode }) {
     s.last = performance.now();
     s.frame = requestAnimationFrame(tick);
   }, [draw]);
+
+  // On load the card drops in on its strap and swings to a stop, so it reads as something you can grab.
+  // It starts lifted and off to one side (the strap slack), then the same spring as a release brings it
+  // down. Reduced motion: it just hangs at rest.
+  React.useLayoutEffect(() => {
+    const s = state.current;
+    if (reduced()) {
+      draw();
+      return;
+    }
+    s.x = DROP_X;
+    s.y = -DROP_LIFT;
+    draw();
+    const wait = window.setTimeout(settle, DROP_DELAY);
+    return () => window.clearTimeout(wait);
+  }, [draw, settle]);
 
   function grab(e: React.PointerEvent<HTMLDivElement>) {
     const s = state.current;
