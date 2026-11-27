@@ -13,6 +13,8 @@ import { Field } from "@/components/ui/Field";
 import { Icon } from "@/components/ui/Icon";
 import { Input } from "@/components/ui/Input";
 import { Select } from "@/components/ui/Select";
+import { EmailInput } from "./EmailInput";
+import { capitalizeField } from "./typing";
 import { saveDetails, useSavedDetails, withChannel, type JoinDetails } from "./checkout";
 import { PLANS, WELCOME, type Channel, type PlanId } from "./plans";
 
@@ -482,7 +484,7 @@ export function JoinPage({ channel, referralCode, cancelled = false }: JoinPageP
                   placeholder="e.g. Alex"
                   autoComplete="given-name"
                   value={values.firstName}
-                  onChange={(e) => set("firstName", e.target.value)}
+                  onChange={(e) => set("firstName", capitalizeField(e.target))}
                 />
               )}
             </Field>
@@ -496,23 +498,22 @@ export function JoinPage({ channel, referralCode, cancelled = false }: JoinPageP
                   placeholder="e.g. Morgan"
                   autoComplete="family-name"
                   value={values.lastName}
-                  onChange={(e) => set("lastName", e.target.value)}
+                  onChange={(e) => set("lastName", capitalizeField(e.target))}
                 />
               )}
             </Field>
           </NameRow>
           <Field label={<RequiredLabel>Email address</RequiredLabel>} error={errors.email}>
             {(p) => (
-              <Input
+              <EmailInput
                 {...p}
                 required
                 id="join-email"
                 name="email"
                 placeholder="e.g. alex@example.com"
-                type="email"
                 autoComplete="email"
                 value={values.email}
-                onChange={(e) => set("email", e.target.value)}
+                onValue={(email) => set("email", email)}
               />
             )}
           </Field>
